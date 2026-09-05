@@ -1,0 +1,13 @@
+database/attendance.db
+dataset/students/*.jpg
+dataset/students/*.jpeg
+dataset/students/*.png
+dataset/students/samples/*.png
+dataset/students/model/*.yml
+dataset/students/model/*.pkl
+uploads/*.jpg
+uploads/*.jpeg
+uploads/*.png
+venv/
+__pycache__/
+*.pyc

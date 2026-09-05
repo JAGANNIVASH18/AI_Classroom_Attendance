@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Register Student{% endblock %}
+{% block page_title %}Register Student{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header"><i class="fa-solid fa-user-plus"></i> New Student Registration</div>
+  <div class="card-body">
+    <form method="POST" enctype="multipart/form-data" id="registerForm">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Student Name</label>
+          <input type="text" class="form-control" name="name" required placeholder="e.g. Priya Sharma">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Register Number / Student ID</label>
+          <input type="text" class="form-control" name="student_id" required placeholder="e.g. CS2023001">
+        </div>
+      </div>
+
+      <hr class="my-4">
+      <label class="form-label">Face Photo</label>
+      <ul class="nav nav-tabs" id="photoTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#uploadTab" type="button">Upload Photo</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#webcamTab" type="button" id="webcamTabBtn">Use Webcam</button>
+        </li>
+      </ul>
+
+      <div class="tab-content border border-top-0 p-3 rounded-bottom">
+        <div class="tab-pane fade show active" id="uploadTab">
+          <input class="form-control" type="file" name="image_file" accept="image/png, image/jpeg" id="imageFileInput">
+          <small class="text-muted">Use a clear, front-facing photo with a single face visible.</small>
+        </div>
+
+        <div class="tab-pane fade" id="webcamTab">
+          <div class="text-center">
+            <video id="regVideo" autoplay playsinline class="webcam-preview"></video>
+            <canvas id="regCanvas" style="display:none;"></canvas>
+            <div class="mt-2">
+              <button type="button" class="btn btn-outline-secondary" id="startRegCam">Start Camera</button>
+              <button type="button" class="btn btn-primary" id="captureBtn" disabled>Capture Photo</button>
+            </div>
+            <div class="mt-2" id="captureResult"></div>
+          </div>
+          <input type="hidden" name="webcam_image" id="webcamImageInput">
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-success mt-4"><i class="fa-solid fa-floppy-disk"></i> Save Student</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const startBtn = document.getElementById('startRegCam');
+const captureBtn = document.getElementById('captureBtn');
+const video = document.getElementById('regVideo');
+const canvas = document.getElementById('regCanvas');
+const webcamImageInput = document.getElementById('webcamImageInput');
+const captureResult = document.getElementById('captureResult');
+let stream = null;
+
+startBtn.addEventListener('click', async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    captureBtn.disabled = false;
+    startBtn.textContent = 'Camera Running';
+    startBtn.disabled = true;
+  } catch (err) {
+    captureResult.innerHTML = `<div class="alert alert-danger">Camera unavailable: ${err.message}</div>`;
+  }
+});
+
+captureBtn.addEventListener('click', () => {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+  webcamImageInput.value = dataUrl;
+  captureResult.innerHTML = `<img src="${dataUrl}" class="captured-preview">
+    <p class="text-success mt-1"><i class="fa-solid fa-circle-check"></i> Photo captured. You can now save the student.</p>`;
+  // Clear the file-upload field so we don't conflict
+  document.getElementById('imageFileInput').value = '';
+});
+</script>
+{% endblock %}

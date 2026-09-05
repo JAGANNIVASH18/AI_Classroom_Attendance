@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Edit Attendance{% endblock %}
+{% block page_title %}Edit Attendance{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm" style="max-width: 500px;">
+  <div class="card-header"><i class="fa-solid fa-pen"></i> Correct Attendance Record</div>
+  <div class="card-body">
+    <p><strong>Student:</strong> {{ record.name }} ({{ record.student_id }})</p>
+    <p><strong>Date:</strong> {{ record.date }} &nbsp; <strong>Time:</strong> {{ record.time }}</p>
+    <p><strong>Current Status:</strong>
+      <span class="badge bg-{{ 'success' if record.status=='Present' else 'danger' }}">{{ record.status }}</span>
+    </p>
+    <form method="POST">
+      <label class="form-label">Change Status To:</label>
+      <select class="form-select mb-3" name="status">
+        <option value="Present" {{ 'selected' if record.status=='Present' }}>Present</option>
+        <option value="Absent" {{ 'selected' if record.status=='Absent' }}>Absent</option>
+      </select>
+      <button type="submit" class="btn btn-success"><i class="fa-solid fa-floppy-disk"></i> Save Correction</button>
+      <a href="{{ url_for('attendance_records') }}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

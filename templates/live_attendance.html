@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Live Attendance{% endblock %}
+{% block page_title %}Live Attendance{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header"><i class="fa-solid fa-video"></i> Live Face Recognition Attendance</div>
+  <div class="card-body text-center">
+    <div class="webcam-stage">
+      <video id="liveVideo" autoplay playsinline></video>
+      <canvas id="overlayCanvas"></canvas>
+    </div>
+
+    <div class="mt-3">
+      <button class="btn btn-outline-secondary" id="startCamBtn"><i class="fa-solid fa-camera"></i> Start Camera</button>
+      <button class="btn btn-success" id="startDetectBtn" disabled><i class="fa-solid fa-play"></i> Start Recognition</button>
+      <button class="btn btn-danger" id="stopDetectBtn" disabled><i class="fa-solid fa-stop"></i> Stop</button>
+    </div>
+
+    <p id="camStatus" class="text-muted mt-2">Camera not started.</p>
+
+    <div class="mt-3">
+      <h6>Recognized This Session:</h6>
+      <div id="recognizedList" class="d-flex flex-wrap gap-2 justify-content-center"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const video = document.getElementById('liveVideo');
+const overlay = document.getElementById('overlayCanvas');
+const ctx = overlay.getContext('2d');
+const startCamBtn = document.getElementById('startCamBtn');
+const startDetectBtn = document.getElementById('startDetectBtn');
+const stopDetectBtn = document.getElementById('stopDetectBtn');
+const camStatus = document.getElementById('camStatus');
+const recognizedList = document.getElementById('recognizedList');
+
+let stream = null;
+let detectionInterval = null;
+const seenStudents = new Set();
+
+startCamBtn.addEventListener('click', async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
+      overlay.width = video.videoWidth;
+      overlay.height = video.videoHeight;
+    };
+    camStatus.textContent = 'Camera running. Click "Start Recognition" to begin marking attendance.';
+    startDetectBtn.disabled = false;
+    startCamBtn.disabled = true;
+  } catch (err) {
+    camStatus.textContent = 'Camera unavailable: ' + err.message;
+  }
+});
+
+startDetectBtn.addEventListener('click', () => {
+  startDetectBtn.disabled = true;
+  stopDetectBtn.disabled = false;
+  camStatus.textContent = 'Recognition running...';
+  detectionInterval = setInterval(captureAndSend, 1500);
+});
+
+stopDetectBtn.addEventListener('click', () => {
+  clearInterval(detectionInterval);
+  startDetectBtn.disabled = false;
+  stopDetectBtn.disabled = true;
+  camStatus.textContent = 'Recognition stopped.';
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+});
+
+function captureAndSend() {
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = video.videoWidth;
+  tmpCanvas.height = video.videoHeight;
+  tmpCanvas.getContext('2d').drawImage(video, 0, 0);
+  const dataUrl = tmpCanvas.toDataURL('image/jpeg', 0.8);
+
+  fetch("{{ url_for('recognize_frame') }}", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: dataUrl })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      camStatus.textContent = 'Error: ' + data.error;
+      return;
+    }
+    drawBoxes(data.faces || []);
+    (data.faces || []).forEach(f => {
+      if (f.known && !seenStudents.has(f.student_id)) {
+        seenStudents.add(f.student_id);
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-success p-2';
+        badge.textContent = `${f.name} (${f.student_id})`;
+        recognizedList.appendChild(badge);
+      }
+    });
+  })
+  .catch(err => { camStatus.textContent = 'Request failed: ' + err.message; });
+}
+
+function drawBoxes(faces) {
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  faces.forEach(f => {
+    const [top, right, bottom, left] = f.box;
+    ctx.strokeStyle = f.known ? '#22c55e' : '#ef4444';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(left, top, right - left, bottom - top);
+    ctx.fillStyle = f.known ? '#22c55e' : '#ef4444';
+    ctx.font = '16px Arial';
+    ctx.fillText(f.known ? `${f.name}` : 'Unknown', left, top - 8 > 10 ? top - 8 : 10);
+  });
+}
+</script>
+{% endblock %}
